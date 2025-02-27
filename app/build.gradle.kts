@@ -44,6 +44,10 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.play.services.location)
+    implementation("androidx.appcompat:appcompat:1.6.1") // Or the latest version
+    implementation("androidx.core:core-ktx:1.12.0") // Or the latest version
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")// Or the latest version
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
