@@ -39,8 +39,6 @@ class LocationPollService : Service() {
     private val notificationId = 1
     private val minDistanceBetweenUpdates = 0f // 0 meters
 
-
-
     override fun onCreate() {
         super.onCreate()
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -52,14 +50,7 @@ class LocationPollService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startLocationUpdates()
-        setServiceRunning(true)
         return START_STICKY
-    }
-
-    private fun setServiceRunning(isRunning: Boolean) {
-        val editor = sharedPreferences.edit()
-        editor.putBoolean("isServiceRunning", isRunning)
-        editor.apply()
     }
 
     override fun onDestroy() {
@@ -115,7 +106,6 @@ class LocationPollService : Service() {
 
     private fun stopLocationUpdates() {
         locationManager.removeUpdates(locationListener)
-        setServiceRunning(false)
     }
 
     private fun sendLocationOverUDP(location: Location) {

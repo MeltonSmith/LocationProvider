@@ -1,7 +1,6 @@
 package smith.melton.locationprovider
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -20,7 +19,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.Date
-import smith.melton.locationprovider.R
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -80,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         logTextView = findViewById(R.id.logTextView)
         settingsButton = findViewById(R.id.settingsButton)
 
-        updateServiceStatus()
+        updateServiceStatusView()
 
         pollInterval = sharedPreferences.getLong("pollInterval", 5000L)
         locationProvider = sharedPreferences.getString("locationProvider", LocationManager.GPS_PROVIDER) ?: LocationManager.GPS_PROVIDER
@@ -141,21 +139,24 @@ class MainActivity : AppCompatActivity() {
         serviceIntent.putExtra("locationProvider", locationProvider)
         serviceIntent.putExtra("udpIpAddress", udpIpAddress)
         ContextCompat.startForegroundService(this, serviceIntent)
-        updateServiceStatus()
+        setServiceRunning(true)
+        updateServiceStatusView()
     }
 
     private fun stopLocationService() {
         val serviceIntent = Intent(this, LocationPollService::class.java)
         stopService(serviceIntent)
-        updateServiceStatus()
+        setServiceRunning(false)
+        updateServiceStatusView()
     }
 
-    private fun updateServiceStatus() {
-        serviceStatusTextView.text = if (isServiceRunning) {
-            "Service Status: Running"
-        } else {
-            "Service Status: Stopped"
-        }
+    private fun updateServiceStatusView() {
+        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
+
+        val text = if (isServiceRunning) "Running" else "Stopped"
+        serviceStatusTextView.text = "Service Status: ${text}"
+        startServiceButton.isEnabled = !isServiceRunning
+        stopServiceButton.isEnabled = isServiceRunning
     }
 
     private fun appendLog(message: String) {
@@ -165,6 +166,12 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             logTextView.append(logMessage)
         }
+    }
+
+    private fun setServiceRunning(isRunning: Boolean) {
+        val editor = sharedPreferences.edit()
+        editor.putBoolean("isServiceRunning", isRunning)
+        editor.apply()
     }
 
     private fun clearLog() {
