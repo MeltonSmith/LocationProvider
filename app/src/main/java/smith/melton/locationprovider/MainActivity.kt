@@ -1,10 +1,12 @@
 package smith.melton.locationprovider
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.LocationManager
@@ -31,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsButton: Button
     private var isServiceRunning = false
     private lateinit var sharedPreferences: SharedPreferences
-    private var pollInterval = 5
+    private var pollInterval: Long = 5000L
     private var locationProvider = LocationManager.GPS_PROVIDER
     private var udpIpAddress = "YOUR_SERVER_IP"
 
@@ -57,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val data: Intent? = result.data
-                pollInterval = data?.getIntExtra("newInterval", 5) ?: 5
+                pollInterval = data?.getLongExtra("newInterval", 5000L) ?: 5000L
                 locationProvider = data?.getStringExtra("newProvider") ?: LocationManager.GPS_PROVIDER
                 udpIpAddress = data?.getStringExtra("newIpAddress") ?: "YOUR_SERVER_IP"
                 Toast.makeText(this, "New interval: $pollInterval, New provider: $locationProvider, New IP: $udpIpAddress", Toast.LENGTH_SHORT).show()
@@ -68,6 +70,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        sharedPreferences = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
 
         startServiceButton = findViewById(R.id.startServiceButton)
         stopServiceButton = findViewById(R.id.stopServiceButton)
@@ -76,8 +80,9 @@ class MainActivity : AppCompatActivity() {
         logTextView = findViewById(R.id.logTextView)
         settingsButton = findViewById(R.id.settingsButton)
 
-        sharedPreferences = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
-        pollInterval = sharedPreferences.getInt("pollInterval", 5)
+        updateServiceStatus()
+
+        pollInterval = sharedPreferences.getLong("pollInterval", 5000L)
         locationProvider = sharedPreferences.getString("locationProvider", LocationManager.GPS_PROVIDER) ?: LocationManager.GPS_PROVIDER
 
         startServiceButton.setOnClickListener {
@@ -95,12 +100,19 @@ class MainActivity : AppCompatActivity() {
         settingsButton.setOnClickListener {
             openSettings()
         }
-//        registerReceiver(logReceiver, IntentFilter("com.example.yourapp.LOG_UPDATE"))
+
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//            registerReceiver(broadcastReceiver, intentFilter, RECEIVER_EXPORTED)
+//        } else {
+//            @Suppress("UnspecifiedRegisterReceiverFlag")
+//            registerReceiver(broadcastReceiver, intentFilter)
+//        }
+        registerReceiver(logReceiver, IntentFilter("smith.melton.location.LOG_UPDATE"), RECEIVER_EXPORTED)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-//        unregisterReceiver(logReceiver)
+        unregisterReceiver(logReceiver)
     }
 
     private fun checkPermissionsAndStartService() {
@@ -129,14 +141,12 @@ class MainActivity : AppCompatActivity() {
         serviceIntent.putExtra("locationProvider", locationProvider)
         serviceIntent.putExtra("udpIpAddress", udpIpAddress)
         ContextCompat.startForegroundService(this, serviceIntent)
-        isServiceRunning = true
         updateServiceStatus()
     }
 
     private fun stopLocationService() {
         val serviceIntent = Intent(this, LocationPollService::class.java)
         stopService(serviceIntent)
-        isServiceRunning = false
         updateServiceStatus()
     }
 
@@ -167,7 +177,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateServiceSettings() {
-        val intent = Intent("com.example.yourapp.UPDATE_SETTINGS")
+        val intent = Intent("smith.melton.location.UPDATE_SETTINGS")
         intent.putExtra("newInterval", pollInterval)
         intent.putExtra("newProvider", locationProvider)
         sendBroadcast(intent)

@@ -1,5 +1,7 @@
 package smith.melton.locationprovider
 
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
+import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,6 +9,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -21,9 +24,6 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.text.SimpleDateFormat
-import kotlin.text.format
-import android.Manifest.permission.ACCESS_COARSE_LOCATION
-import android.Manifest.permission.ACCESS_FINE_LOCATION
 import java.util.Date
 import java.util.Locale
 
@@ -31,18 +31,20 @@ class LocationPollService : Service() {
 
     private lateinit var locationManager: LocationManager
     private lateinit var locationListener: LocationListener
+    private lateinit var sharedPreferences: SharedPreferences
     private var udpSocket: DatagramSocket? = null
     private val serverAddress = "YOUR_SERVER_IP" // Replace with your server IP
     private val serverPort = 12345 // Replace with your server port
     private val channelId = "LocationServiceChannel"
     private val notificationId = 1
-    private val minTimeBetweenUpdates = 5000L // 5 seconds
     private val minDistanceBetweenUpdates = 0f // 0 meters
+
 
 
     override fun onCreate() {
         super.onCreate()
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        sharedPreferences = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
         createNotificationChannel()
         locationListener = createLocationListener()
         startForeground(notificationId, createNotification())
@@ -50,7 +52,14 @@ class LocationPollService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startLocationUpdates()
+        setServiceRunning(true)
         return START_STICKY
+    }
+
+    private fun setServiceRunning(isRunning: Boolean) {
+        val editor = sharedPreferences.edit()
+        editor.putBoolean("isServiceRunning", isRunning)
+        editor.apply()
     }
 
     override fun onDestroy() {
@@ -92,37 +101,47 @@ class LocationPollService : Service() {
         ) {
             return
         }
-        val providers = locationManager.getProviders(true)
-        for (provider in providers) {
-            locationManager.requestLocationUpdates(
-                provider,
-                minTimeBetweenUpdates,
-                minDistanceBetweenUpdates,
-                locationListener
-            )
-        }
+        val locationProvider = sharedPreferences.getString("locationProvider", LocationManager.GPS_PROVIDER) ?: LocationManager.GPS_PROVIDER
+
+        locationManager.getLastKnownLocation(locationProvider)?.let { processLocation(it) }
+
+        locationManager.requestLocationUpdates(
+            locationProvider,
+            sharedPreferences.getLong("pollInterval", 5L),
+            minDistanceBetweenUpdates,
+            locationListener
+        )
     }
 
     private fun stopLocationUpdates() {
         locationManager.removeUpdates(locationListener)
+        setServiceRunning(false)
     }
 
     private fun sendLocationOverUDP(location: Location) {
         Thread {
-            try {
-                if (udpSocket == null) {
-                    udpSocket = DatagramSocket()
-                }
-                val address = InetAddress.getByName(serverAddress)
-                val message = formatLocationMessage(location)
-                val data = message.toByteArray()
-                val packet = DatagramPacket(data, data.size, address, serverPort)
-                udpSocket?.send(packet)
-                Log.d("LocationService", "Sent: $message")
-            } catch (e: Exception) {
-                Log.e("LocationService", "Error sending UDP packet", e)
-            }
+            processLocation(location)
         }.start()
+    }
+
+    private fun processLocation(location: Location) {
+        try {
+            if (udpSocket == null) {
+                udpSocket = DatagramSocket()
+            }
+            val message = formatLocationMessage(location)
+            val i = Intent("smith.melton.location.LOG_UPDATE")
+            i.putExtra("logMessage", message)
+            sendBroadcast(i)
+    //                val address = InetAddress.getByName(serverAddress)
+    //                val data = message.toByteArray()
+    //                val packet = DatagramPacket(data, data.size, address, serverPort)
+
+    //                udpSocket?.send(packet)
+            Log.d("LocationService", "Sent: $message")
+        } catch (e: Exception) {
+            Log.e("LocationService", "Error sending UDP packet", e)
+        }
     }
 
     private fun formatLocationMessage(location: Location): String {

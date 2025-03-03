@@ -11,6 +11,8 @@ import android.widget.EditText
 import android.widget.Spinner
 import androidx.appcompat.app.AppCompatActivity
 
+private const val POLL_INTERVAL = "pollInterval"
+
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var intervalEditText: EditText
@@ -29,7 +31,7 @@ class SettingsActivity : AppCompatActivity() {
         saveButton = findViewById(R.id.saveButton)
         sharedPreferences = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
 
-        val currentInterval = sharedPreferences.getInt("pollInterval", 5)
+        val currentInterval = sharedPreferences.getLong(POLL_INTERVAL, 5000)
         intervalEditText.setText(currentInterval.toString())
 
         val providers = arrayOf(
@@ -54,12 +56,12 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun saveSettings() {
-        val newInterval = intervalEditText.text.toString().toIntOrNull()
+        val newInterval = intervalEditText.text.toString().toLongOrNull()
         val newProvider = providerSpinner.selectedItem.toString()
         val newIpAddress = ipAddressEditText.text.toString()
-        if (newInterval != null && newInterval > 0) {
+        if (newInterval != null && newInterval >= 0) {
             sharedPreferences.edit()
-                .putInt("pollInterval", newInterval)
+                .putLong(POLL_INTERVAL, newInterval)
                 .putString("locationProvider", newProvider)
                 .putString("udpIpAddress", newIpAddress)
                 .apply()
