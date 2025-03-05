@@ -20,12 +20,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import java.net.DatagramPacket
 import java.net.DatagramSocket
-import java.net.InetAddress
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import smith.melton.locationprovider.BroadcastLogger.logMessageViaBroadCast
 
 class LocationPollService : Service() {
 
@@ -33,11 +29,25 @@ class LocationPollService : Service() {
     private lateinit var locationListener: LocationListener
     private lateinit var sharedPreferences: SharedPreferences
     private var udpSocket: DatagramSocket? = null
-    private val serverAddress = "YOUR_SERVER_IP" // Replace with your server IP
+    private val serverAddress = "192.168.100.2" // Replace with your server IP
     private val serverPort = 12345 // Replace with your server port
     private val channelId = "LocationServiceChannel"
     private val notificationId = 1
     private val minDistanceBetweenUpdates = 0f // 0 meters
+
+    companion object {
+        private var instance: LocationPollService? = null
+
+        fun isInstanceCreated(): Boolean {
+            return instance != null
+        }
+
+//        private fun logMessage(context: Context, message: String) {
+//            val i = Intent("smith.melton.location.LOG_UPDATE")
+//            i.putExtra("logMessage", message)
+//            context.sendBroadcast(i)
+//        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -46,6 +56,7 @@ class LocationPollService : Service() {
         createNotificationChannel()
         locationListener = createLocationListener()
         startForeground(notificationId, createNotification())
+        instance = this
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -93,19 +104,24 @@ class LocationPollService : Service() {
             return
         }
         val locationProvider = sharedPreferences.getString("locationProvider", LocationManager.GPS_PROVIDER) ?: LocationManager.GPS_PROVIDER
+        val pollInterval = sharedPreferences.getLong("pollInterval", 5L)
 
+        logMessageViaBroadCast(applicationContext,"Location poll service started with poll interval of ${pollInterval} ms, main provider is ${locationProvider}")
         locationManager.getLastKnownLocation(locationProvider)?.let { processLocation(it) }
 
         locationManager.requestLocationUpdates(
             locationProvider,
-            sharedPreferences.getLong("pollInterval", 5L),
+            pollInterval,
             minDistanceBetweenUpdates,
             locationListener
         )
+
+
     }
 
     private fun stopLocationUpdates() {
         locationManager.removeUpdates(locationListener)
+        logMessageViaBroadCast(applicationContext,"Location poll service stopped")
     }
 
     private fun sendLocationOverUDP(location: Location) {
@@ -120,9 +136,8 @@ class LocationPollService : Service() {
                 udpSocket = DatagramSocket()
             }
             val message = formatLocationMessage(location)
-            val i = Intent("smith.melton.location.LOG_UPDATE")
-            i.putExtra("logMessage", message)
-            sendBroadcast(i)
+            logMessageViaBroadCast(applicationContext,message)
+
     //                val address = InetAddress.getByName(serverAddress)
     //                val data = message.toByteArray()
     //                val packet = DatagramPacket(data, data.size, address, serverPort)
@@ -135,10 +150,10 @@ class LocationPollService : Service() {
     }
 
     private fun formatLocationMessage(location: Location): String {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
-            Locale.getDefault())
-        val formattedDate = dateFormat.format(Date())
-        return "${location.latitude},${location.longitude},$formattedDate"
+//        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
+//            Locale.getDefault())
+//        val formattedDate = dateFormat.format(Date())
+        return "${location.latitude},${location.longitude}"
     }
 
     private fun createNotificationChannel() {
@@ -173,3 +188,4 @@ class LocationPollService : Service() {
         return null
     }
 }
+

@@ -17,8 +17,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import smith.melton.locationprovider.BroadcastLogger.logMessageViaBroadCast
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.LinkedList
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -29,11 +31,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var serviceStatusTextView: TextView
     private lateinit var logTextView: TextView
     private lateinit var settingsButton: Button
-    private var isServiceRunning = false
     private lateinit var sharedPreferences: SharedPreferences
+
+    private var isServiceRunning = false
     private var pollInterval: Long = 5000L
     private var locationProvider = LocationManager.GPS_PROVIDER
-    private var udpIpAddress = "YOUR_SERVER_IP"
+    private var udpIpAddress = "192.168.100.2"
+    private var udpPort = 82
+
+    private val logEntries = LinkedList<String>()
+    private val maxLogSize = 1000
 
     private val requestPermissionLauncher =
         registerForActivityResult(
@@ -59,7 +66,8 @@ class MainActivity : AppCompatActivity() {
                 val data: Intent? = result.data
                 pollInterval = data?.getLongExtra("newInterval", 5000L) ?: 5000L
                 locationProvider = data?.getStringExtra("newProvider") ?: LocationManager.GPS_PROVIDER
-                udpIpAddress = data?.getStringExtra("newIpAddress") ?: "YOUR_SERVER_IP"
+                udpIpAddress = data?.getStringExtra("newIpAddress") ?: "192.168.100.2"
+                udpPort = data?.getIntExtra("udpPort", 82) ?: 82
                 Toast.makeText(this, "New interval: $pollInterval, New provider: $locationProvider, New IP: $udpIpAddress", Toast.LENGTH_SHORT).show()
                 updateServiceSettings()
             }
@@ -69,7 +77,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         sharedPreferences = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
-        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
+
+        isServiceRunning = LocationPollService.isInstanceCreated()
+//        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
 
         startServiceButton = findViewById(R.id.startServiceButton)
         stopServiceButton = findViewById(R.id.stopServiceButton)
@@ -139,19 +149,20 @@ class MainActivity : AppCompatActivity() {
         serviceIntent.putExtra("locationProvider", locationProvider)
         serviceIntent.putExtra("udpIpAddress", udpIpAddress)
         ContextCompat.startForegroundService(this, serviceIntent)
-        setServiceRunning(true)
+        isServiceRunning = true
         updateServiceStatusView()
     }
 
     private fun stopLocationService() {
         val serviceIntent = Intent(this, LocationPollService::class.java)
         stopService(serviceIntent)
-        setServiceRunning(false)
+//        setServiceRunning(false)
+        isServiceRunning = false
         updateServiceStatusView()
     }
 
     private fun updateServiceStatusView() {
-        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
+//        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
 
         val text = if (isServiceRunning) "Running" else "Stopped"
         serviceStatusTextView.text = "Service Status: ${text}"
@@ -160,22 +171,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendLog(message: String) {
-        val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val formattedDate = dateFormat.format(Date())
-        val logMessage = "[$formattedDate] $message\n"
-        runOnUiThread {
-            logTextView.append(logMessage)
+        val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        val formattedMessage = "[$currentTime] $message\n"
+
+        synchronized(logEntries) {
+            logEntries.add(formattedMessage)
+            if (logEntries.size > maxLogSize) {
+                logEntries.removeFirst()
+            }
+
+            runOnUiThread {
+                val logText = logEntries.joinToString("")
+                logTextView.text = logText
+            }
         }
     }
 
-    private fun setServiceRunning(isRunning: Boolean) {
-        val editor = sharedPreferences.edit()
-        editor.putBoolean("isServiceRunning", isRunning)
-        editor.apply()
-    }
+//    private fun setServiceRunning(isRunning: Boolean) {
+//        val editor = sharedPreferences.edit()
+//        editor.putBoolean("isServiceRunning", isRunning)
+//        editor.apply()
+//    }
 
     private fun clearLog() {
-        logTextView.text = ""
+        synchronized(logEntries) {
+            logEntries.clear()
+            runOnUiThread {
+                logTextView.text = ""
+            }
+        }
     }
 
     private fun openSettings() {
