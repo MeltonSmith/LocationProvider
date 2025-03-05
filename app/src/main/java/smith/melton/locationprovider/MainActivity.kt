@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
@@ -26,6 +27,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var startServiceButton: Button
+    private lateinit var startReceiverButton: Button
     private lateinit var stopServiceButton: Button
     private lateinit var clearLogButton: Button
     private lateinit var serviceStatusTextView: TextView
@@ -79,9 +81,9 @@ class MainActivity : AppCompatActivity() {
         sharedPreferences = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
 
         isServiceRunning = LocationPollService.isInstanceCreated()
-//        isServiceRunning = sharedPreferences.getBoolean("isServiceRunning", false)
 
         startServiceButton = findViewById(R.id.startServiceButton)
+        startReceiverButton = findViewById(R.id.startReceiverButton)
         stopServiceButton = findViewById(R.id.stopServiceButton)
         clearLogButton = findViewById(R.id.clearLogButton)
         serviceStatusTextView = findViewById(R.id.serviceStatusTextView)
@@ -167,6 +169,7 @@ class MainActivity : AppCompatActivity() {
         val text = if (isServiceRunning) "Running" else "Stopped"
         serviceStatusTextView.text = "Service Status: ${text}"
         startServiceButton.isEnabled = !isServiceRunning
+        startReceiverButton.isEnabled = !isServiceRunning
         stopServiceButton.isEnabled = isServiceRunning
     }
 
