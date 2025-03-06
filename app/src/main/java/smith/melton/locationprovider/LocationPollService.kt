@@ -29,8 +29,8 @@ class LocationPollService : Service() {
     private lateinit var locationListener: LocationListener
     private lateinit var sharedPreferences: SharedPreferences
     private var udpSocket: DatagramSocket? = null
-    private val serverAddress = "192.168.100.2" // Replace with your server IP
-    private val serverPort = 12345 // Replace with your server port
+//    private val serverAddress = "192.168.100.2" // Replace with your server IP
+//    private val serverPort = 12345 // Replace with your server port
     private val channelId = "LocationServiceChannel"
     private val notificationId = 1
     private val minDistanceBetweenUpdates = 0f // 0 meters

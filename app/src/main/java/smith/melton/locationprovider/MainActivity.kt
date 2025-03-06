@@ -99,6 +99,10 @@ class MainActivity : AppCompatActivity() {
             checkPermissionsAndStartService()
         }
 
+        startReceiverButton.setOnClickListener {
+            checkPermissionsAndStartReceiverService()
+        }
+
         stopServiceButton.setOnClickListener {
             stopLocationService()
         }
@@ -145,11 +149,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkPermissionsAndStartReceiverService() {
+        val permissions = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (permissions.all {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    it
+                ) == PackageManager.PERMISSION_GRANTED
+            }) {
+            startReceiverService()
+        } else {
+            requestPermissionLauncher.launch(permissions.toTypedArray())
+        }
+    }
+
     private fun startLocationService() {
         val serviceIntent = Intent(this, LocationPollService::class.java)
         serviceIntent.putExtra("pollInterval", pollInterval)
         serviceIntent.putExtra("locationProvider", locationProvider)
         serviceIntent.putExtra("udpIpAddress", udpIpAddress)
+        ContextCompat.startForegroundService(this, serviceIntent)
+        isServiceRunning = true
+        updateServiceStatusView()
+    }
+
+    private fun startReceiverService() {
+        val serviceIntent = Intent(this, LocationReceiverService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         isServiceRunning = true
         updateServiceStatusView()
