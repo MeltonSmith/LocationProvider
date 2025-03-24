@@ -188,7 +188,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopLocationService() {
         val serviceIntent = Intent(this, LocationPollService::class.java)
+        val receiverService = Intent(this, LocationReceiverService::class.java)
         stopService(serviceIntent)
+        stopService(receiverService)
 //        setServiceRunning(false)
         isServiceRunning = false
         updateServiceStatusView()

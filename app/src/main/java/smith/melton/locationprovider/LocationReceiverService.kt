@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import smith.melton.locationprovider.BroadcastLogger.logMessageViaBroadCast
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.text.SimpleDateFormat
@@ -36,7 +37,8 @@ class LocationReceiverService : Service(){
         super.onCreate()
         createNotificationChannel()
         startForeground(notificationId, createNotification())
-        sendLogMessage("UDP Receiver Service created")
+        logMessageViaBroadCast(applicationContext,"UDP Receiver Service created")
+
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         setupMockLocationProvider()
     }
@@ -49,7 +51,7 @@ class LocationReceiverService : Service(){
 
     override fun onDestroy() {
         stopListening()
-        sendLogMessage("UDP Receiver Service destroyed")
+        logMessageViaBroadCast(applicationContext,"UDP Receiver Service destroyed")
         removeMockLocationProvider()
         super.onDestroy()
     }
@@ -70,13 +72,13 @@ class LocationReceiverService : Service(){
         try {
             udpSocket = DatagramSocket(udpPort)
             val buffer = ByteArray(1024)
-            sendLogMessage("UDP Receiver started on port: $udpPort")
+            logMessageViaBroadCast(applicationContext,"UDP Receiver started on port: $udpPort")
             while (isRunning.get()) {
                 val packet = DatagramPacket(buffer, buffer.size)
                 udpSocket?.receive(packet)
                 val message = String(packet.data, 0, packet.length)
                 Log.d("UdpReceiverService", "Received: $message")
-                sendLogMessage("Received: $message")
+                logMessageViaBroadCast(applicationContext,"Received: $message")
                 val location = parseLocationMessage(message)
                 if (location != null) {
                     sendLocationToUI(location)
@@ -85,7 +87,7 @@ class LocationReceiverService : Service(){
             }
         } catch (e: Exception) {
             Log.e("UdpReceiverService", "Error receiving UDP packet", e)
-            sendLogMessage("Error receiving UDP packet: ${e.message}")
+            logMessageViaBroadCast(applicationContext,"Error receiving UDP packet: ${e.message}")
         } finally {
             udpSocket?.close()
             udpSocket = null
@@ -96,7 +98,7 @@ class LocationReceiverService : Service(){
         isRunning.set(false)
         udpSocket?.close()
         udpSocket = null
-        sendLogMessage("UDP Receiver stopped")
+        logMessageViaBroadCast(applicationContext,"UDP Receiver stopped")
     }
 
     private fun parseLocationMessage(message: String): LocationData? {
@@ -109,7 +111,7 @@ class LocationReceiverService : Service(){
                 return LocationData(latitude, longitude, time)
             } catch (e: NumberFormatException) {
                 Log.e("UdpReceiverService", "Error parsing location message", e)
-                sendLogMessage("Error parsing location message: ${e.message}")
+                logMessageViaBroadCast(applicationContext,"Error parsing location message: ${e.message}")
             }
         }
         return null
@@ -117,9 +119,7 @@ class LocationReceiverService : Service(){
 
     private fun sendLocationToUI(location: LocationData) {
         val locationMessage = "Received Location: Lat=${location.latitude}, Lon=${location.longitude}, Time=${location.time}"
-        val intent = Intent("com.example.yourapp.LOG_UPDATE")
-        intent.putExtra("logMessage", locationMessage)
-        sendBroadcast(intent)
+        logMessageViaBroadCast(applicationContext, locationMessage)
     }
 
     private fun createNotificationChannel() {
@@ -150,11 +150,11 @@ class LocationReceiverService : Service(){
             .build()
     }
 
-    private fun sendLogMessage(message: String) {
-        val intent = Intent("com.example.yourapp.LOG_UPDATE")
-        intent.putExtra("logMessage", message)
-        sendBroadcast(intent)
-    }
+//    private fun sendLogMessage(message: String) {
+//        val intent = Intent("com.example.yourapp.LOG_UPDATE")
+//        intent.putExtra("logMessage", message)
+//        sendBroadcast(intent)
+//    }
 
     private fun setupMockLocationProvider() {
         try {
@@ -173,7 +173,7 @@ class LocationReceiverService : Service(){
             locationManager.setTestProviderEnabled(mockProviderName, true)
         } catch (e: SecurityException) {
             Log.e("UdpReceiverService", "Error setting up mock location provider", e)
-            sendLogMessage("Error setting up mock location provider: ${e.message}")
+            logMessageViaBroadCast(applicationContext, "Error setting up mock location provider: ${e.message}")
         }
     }
 
@@ -182,7 +182,7 @@ class LocationReceiverService : Service(){
             locationManager.removeTestProvider(mockProviderName)
         } catch (e: Exception) {
             Log.e("UdpReceiverService", "Error removing mock location provider", e)
-            sendLogMessage("Error removing mock location provider: ${e.message}")
+            logMessageViaBroadCast(applicationContext, "Error removing mock location provider: ${e.message}")
         }
     }
 
@@ -196,7 +196,7 @@ class LocationReceiverService : Service(){
             locationManager.setTestProviderLocation(mockProviderName, location)
         } catch (e: SecurityException) {
             Log.e("UdpReceiverService", "Error updating mock location", e)
-            sendLogMessage("Error updating mock location: ${e.message}")
+            logMessageViaBroadCast(applicationContext, "Error updating mock location: ${e.message}")
         }
     }
 }
