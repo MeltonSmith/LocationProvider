@@ -22,6 +22,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import java.net.DatagramSocket
 import smith.melton.locationprovider.BroadcastLogger.logMessageViaBroadCast
+import java.net.DatagramPacket
+import java.net.InetAddress
 
 class LocationPollService : Service() {
 
@@ -29,8 +31,8 @@ class LocationPollService : Service() {
     private lateinit var locationListener: LocationListener
     private lateinit var sharedPreferences: SharedPreferences
     private var udpSocket: DatagramSocket? = null
-//    private val serverAddress = "192.168.100.2" // Replace with your server IP
-//    private val serverPort = 12345 // Replace with your server port
+//    private val serverAddress = "192.168.100.2"
+//    private val serverPort = 12345
     private val channelId = "LocationServiceChannel"
     private val notificationId = 1
     private val minDistanceBetweenUpdates = 0f // 0 meters
@@ -41,12 +43,6 @@ class LocationPollService : Service() {
         fun isInstanceCreated(): Boolean {
             return instance != null
         }
-
-//        private fun logMessage(context: Context, message: String) {
-//            val i = Intent("smith.melton.location.LOG_UPDATE")
-//            i.putExtra("logMessage", message)
-//            context.sendBroadcast(i)
-//        }
     }
 
     override fun onCreate() {
@@ -103,10 +99,10 @@ class LocationPollService : Service() {
         ) {
             return
         }
-        val locationProvider = sharedPreferences.getString("locationProvider", LocationManager.GPS_PROVIDER) ?: LocationManager.GPS_PROVIDER
-        val pollInterval = sharedPreferences.getLong("pollInterval", 5L)
+        val locationProvider = sharedPreferences.getString(LOCATION_PROVIDER, LocationManager.GPS_PROVIDER) ?: LocationManager.GPS_PROVIDER
+        val pollInterval = sharedPreferences.getLong(POLL_INTERVAL, 5L)
 
-        logMessageViaBroadCast(applicationContext,"Location poll service started with poll interval of ${pollInterval} ms, main provider is ${locationProvider}")
+        logMessageViaBroadCast(applicationContext,"Location poll service started with poll interval of $pollInterval ms, main provider is ${locationProvider}")
         locationManager.getLastKnownLocation(locationProvider)?.let { processLocation(it) }
 
         locationManager.requestLocationUpdates(
@@ -138,11 +134,11 @@ class LocationPollService : Service() {
             val message = formatLocationMessage(location)
             logMessageViaBroadCast(applicationContext,message)
 
-    //                val address = InetAddress.getByName(serverAddress)
-    //                val data = message.toByteArray()
-    //                val packet = DatagramPacket(data, data.size, address, serverPort)
+            val address = InetAddress.getByName(sharedPreferences.getString(UDP_IP_ADDRESS, "192.168.100.2") ?: "192.168.100.2")
+            val data = message.toByteArray()
+            val packet = DatagramPacket(data, data.size, address, sharedPreferences.getInt(UDP_PORT, 2004))
 
-    //                udpSocket?.send(packet)
+            udpSocket?.send(packet)
             Log.d("LocationService", "Sent: $message")
         } catch (e: Exception) {
             Log.e("LocationService", "Error sending UDP packet", e)

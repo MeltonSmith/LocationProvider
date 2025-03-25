@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class LocationReceiverService : Service(){
     private var udpSocket: DatagramSocket? = null
-    private var udpPort = 12345
+    private var udpPort = 2004
     private val channelId = "UdpReceiverServiceChannel"
     private val notificationId = 2
     private var isRunning = AtomicBoolean(false)
@@ -44,7 +44,7 @@ class LocationReceiverService : Service(){
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        udpPort = intent?.getIntExtra("udpPort", 12345) ?: 12345
+        udpPort = intent?.getIntExtra(UDP_PORT, 2004) ?: 2004
         startListening()
         return START_STICKY
     }
