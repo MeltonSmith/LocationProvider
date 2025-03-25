@@ -175,7 +175,7 @@ class LocationPollService : Service() {
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("Location Service")
             .setContentText("Collecting location data...")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .build()
     }
