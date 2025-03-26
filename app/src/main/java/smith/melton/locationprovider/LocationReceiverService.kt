@@ -145,7 +145,8 @@ class LocationReceiverService : Service(){
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("UDP Receiver Service")
             .setContentText("Listening for UDP packets...")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.mipmap.ic_launcher_adaptive_fore_circle)
+            .setBadgeIconType(R.mipmap.ic_launcher_circle)
             .setContentIntent(pendingIntent)
             .build()
     }
