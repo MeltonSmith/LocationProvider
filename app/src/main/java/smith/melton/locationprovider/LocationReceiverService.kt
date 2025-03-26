@@ -150,11 +150,6 @@ class LocationReceiverService : Service(){
             .build()
     }
 
-//    private fun sendLogMessage(message: String) {
-//        val intent = Intent("com.example.yourapp.LOG_UPDATE")
-//        intent.putExtra("logMessage", message)
-//        sendBroadcast(intent)
-//    }
 
     private fun setupMockLocationProvider() {
         try {
